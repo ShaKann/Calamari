@@ -55,6 +55,7 @@ namespace Calamari.Deployment
         {
             foreach (var convention in conventions.OfType<IInstallConvention>())
             {
+                Log.Verbose($"Running deployment convention {convention.GetType().Name}");
                 convention.Install(deployment);
 
                 if (deployment.Variables.GetFlag(SpecialVariables.Action.SkipRemainingConventions))

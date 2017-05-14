@@ -38,6 +38,7 @@ namespace Calamari.Integration.Packages.NuGet
 
         static ManifestMetadata ReadMetadata(string filePath)
         {
+            Log.Verbose($"Reading nupkg metadata: '{filePath}'");
             using (var fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read))
             using (var reader = ZipReader.Open(fileStream))
             {
@@ -49,6 +50,7 @@ namespace Calamari.Integration.Packages.NuGet
                     using (var manifestStream = reader.OpenEntryStream())
                     {
                         var manifest = Manifest.ReadFrom(manifestStream, true);
+                        Log.Verbose("Completed reading package metadata");
                         return manifest.Metadata;
                     }
                 }

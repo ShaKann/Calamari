@@ -53,7 +53,10 @@ namespace Calamari.Integration.FileSystem
 
         public bool DirectoryExists(string path)
         {
-            return Directory.Exists(path);
+            Log.Verbose($"Checking directory exists: '{path}'");
+            var exists = Directory.Exists(path);
+            Log.Verbose(exists ? "Directory exists" : "Directory does not exist");
+            return exists;
         }
 
         public bool DirectoryIsEmpty(string path)
@@ -201,13 +204,20 @@ namespace Calamari.Integration.FileSystem
                 : searchPatterns.SelectMany(pattern => parentDirectoryInfo.GetFiles(pattern, SearchOption.TopDirectoryOnly).Select(fi => fi.FullName));
         }
 
-        public virtual IEnumerable<string> EnumerateFilesRecursively(string parentDirectoryPath, params string[] searchPatterns)
+        public virtual IEnumerable<string> EnumerateFilesRecursively(string parentDirectoryPath,
+            params string[] searchPatterns)
         {
+            Log.Verbose($"Searching '{parentDirectoryPath}' recursively");
             var parentDirectoryInfo = new DirectoryInfo(parentDirectoryPath);
 
-            return searchPatterns.Length == 0
+            var files = searchPatterns.Length == 0
                 ? parentDirectoryInfo.GetFiles("*", SearchOption.AllDirectories).Select(fi => fi.FullName)
-                : searchPatterns.SelectMany(pattern => parentDirectoryInfo.GetFiles(pattern, SearchOption.AllDirectories).Select(fi => fi.FullName));
+                : searchPatterns.SelectMany(pattern => parentDirectoryInfo
+                    .GetFiles(pattern, SearchOption.AllDirectories)
+                    .Select(fi => fi.FullName)).ToList();
+
+            Log.Verbose($"Found {files.Count()} matching files");
+            return files;
         }
 
         public IEnumerable<string> EnumerateDirectories(string parentDirectoryPath)
@@ -471,6 +481,7 @@ namespace Calamari.Integration.FileSystem
         {
             if (!DirectoryExists(directoryPath))
             {
+                Log.Verbose($"Creating directory '{directoryPath}'");
                 Directory.CreateDirectory(directoryPath);
             }
         }
@@ -585,6 +596,8 @@ namespace Calamari.Integration.FileSystem
                 throw new IOException(
                     $"The drive containing the directory '{directoryPath}' on machine '{Environment.MachineName}' does not have enough free disk space available for this operation to proceed. The disk only has {totalNumberOfFreeBytes.ToFileSizeString()} available; please free up at least {required.ToFileSizeString()}.");
             }
+
+            Log.Verbose($"The drive containing '{directoryPath}' has {totalNumberOfFreeBytes.ToFileSizeString()} of free space");
         }
 
         public string GetFullPath(string relativeOrAbsoluteFilePath)

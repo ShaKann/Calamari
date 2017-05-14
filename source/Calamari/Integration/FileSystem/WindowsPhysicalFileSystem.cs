@@ -6,10 +6,6 @@ namespace Calamari.Integration.FileSystem
     {
         public WindowsPhysicalFileSystem()
         {
-#if LONG_FILE_PATHS
-            File = new LongPathsFile();
-            Directory = new LongPathsDirectory();
-#endif
         }
 
         [DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Unicode)]

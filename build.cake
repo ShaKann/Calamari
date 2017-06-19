@@ -4,6 +4,7 @@
 #tool "nuget:?package=GitVersion.CommandLine&version=4.0.0-beta0011"
 
 using Path = System.IO.Path;
+using System.Xml;
 
 //////////////////////////////////////////////////////////////////////
 // ARGUMENTS
@@ -108,6 +109,14 @@ Task("Pack")
     DoPackage("Calamari", "net40", nugetVersion);
     DoPackage("Calamari.Azure", "net451", nugetVersion);   
     Zip("./source/Calamari.Tests/bin/Release/net452/", Path.Combine(artifactsDir, "Binaries.zip"));
+
+    var doc = new XmlDocument();
+    doc.Load(@".\source\Calamari\Calamari.csproj");
+    var rids = doc.SelectSingleNode("Project/PropertyGroup/RuntimeIdentifiers").InnerText;
+    foreach (var rid in rids.Split(';'))
+    {
+        DoPackage("Calamari", "netcoreapp1.0", nugetVersion, rid);
+    }
 });
 
 Task("CopyToLocalPackages")
@@ -118,32 +127,48 @@ Task("CopyToLocalPackages")
 {
     CreateDirectory(localPackagesDir);
     CopyFileToDirectory(Path.Combine(artifactsDir, $"Calamari.{nugetVersion}.nupkg"), localPackagesDir);
-    CopyFileToDirectory(Path.Combine(artifactsDir, $"Calamari.Azure.{nugetVersion}.nupkg"), localPackagesDir);
+    CopyFileToDirectory(Path.Combine(artifactsDir, $"Calamari.{nugetVersion}.nupkg"), localPackagesDir);
 });
 
-private void DoPackage(string project, string framework, string version)
+private void DoPackage(string project, string framework, string version, string runtimeId = null)
 { 
 	var publishedTo = Path.Combine(publishDir, project, framework);
 	var projectDir = Path.Combine("./source", project);
+    var packageId = $"{project}"; 
+    var nugetSrc = $"{projectDir}/{packageId}.nuspec";
 
-    DotNetCorePublish(projectDir, new DotNetCorePublishSettings
+    var publishSettings = new DotNetCorePublishSettings
     {
         Configuration = configuration,
         OutputDirectory = publishedTo,
         Framework = framework,
 		ArgumentCustomization = args => args.Append($"--verbosity normal")
-    });
+    };
 
-	var nuspec = $"{publishedTo}/{project}.nuspec";
-	CopyFile($"{projectDir}/{project}.nuspec", nuspec);
-
-    NuGetPack(nuspec, new NuGetPackSettings
+    var nugetPackSettings = new NuGetPackSettings
     {
         OutputDirectory = artifactsDir,
 		BasePath = publishedTo,
 		Version = nugetVersion,
 		Verbosity = NuGetVerbosity.Normal
-    });
+    };
+
+    if (!string.IsNullOrEmpty(runtimeId))
+    {
+        publishedTo = Path.Combine(publishedTo, runtimeId);
+        publishSettings.OutputDirectory = publishedTo;
+        publishSettings.Runtime = runtimeId;
+        nugetSrc = $"{projectDir}/{packageId}.self-contained.nuspec";
+        packageId = $"{project}.{runtimeId}";
+        nugetPackSettings.Properties = new Dictionary<string, string>{{"runtimeId", runtimeId}};
+    }
+
+    DotNetCorePublish(projectDir, publishSettings);
+
+	var nuspec = $"{publishedTo}/{packageId}.nuspec";
+	CopyFile(nugetSrc, nuspec);
+
+    NuGetPack(nuspec, nugetPackSettings);
 }
 
 //////////////////////////////////////////////////////////////////////

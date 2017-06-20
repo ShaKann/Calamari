@@ -136,6 +136,7 @@ private void DoPackage(string project, string framework, string version, string 
 	var projectDir = Path.Combine("./source", project);
     var packageId = $"{project}"; 
     var nugetSrc = $"{projectDir}/{packageId}.nuspec";
+    var nugetPackProperties = new Dictionary<string,string>();
 
     var publishSettings = new DotNetCorePublishSettings
     {
@@ -145,14 +146,6 @@ private void DoPackage(string project, string framework, string version, string 
 		ArgumentCustomization = args => args.Append($"--verbosity normal")
     };
 
-    var nugetPackSettings = new NuGetPackSettings
-    {
-        OutputDirectory = artifactsDir,
-		BasePath = publishedTo,
-		Version = nugetVersion,
-		Verbosity = NuGetVerbosity.Normal
-    };
-
     if (!string.IsNullOrEmpty(runtimeId))
     {
         publishedTo = Path.Combine(publishedTo, runtimeId);
@@ -160,8 +153,17 @@ private void DoPackage(string project, string framework, string version, string 
         publishSettings.Runtime = runtimeId;
         nugetSrc = $"{projectDir}/{packageId}.self-contained.nuspec";
         packageId = $"{project}.{runtimeId}";
-        nugetPackSettings.Properties = new Dictionary<string, string>{{"runtimeId", runtimeId}};
+        nugetPackProperties.Add("runtimeId", runtimeId);
     }
+
+    var nugetPackSettings = new NuGetPackSettings
+    {
+        OutputDirectory = artifactsDir,
+		BasePath = publishedTo,
+		Version = nugetVersion,
+		Verbosity = NuGetVerbosity.Normal,
+        Properties = nugetPackProperties
+    };
 
     DotNetCorePublish(projectDir, publishSettings);
 
